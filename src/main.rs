@@ -1,4 +1,4 @@
-use macroquad::{prelude::*, rand::*, math::Rect, audio::{load_sound, Sound, PlaySoundParams, play_sound, play_sound_once}};
+use macroquad::{prelude::*, rand::*, math::Rect, audio::{load_sound, Sound, PlaySoundParams, play_sound}};
 use egui_macroquad::egui::{self, Pos2};
 
 struct Timer {
@@ -29,6 +29,7 @@ enum State {
     New,
     Credits,
     Main,
+    Options,
     Shop,
     GameOver,
 }
@@ -68,6 +69,8 @@ struct Game {
     game_music: Vec<Sound>,
     game_sounds: Vec<Sound>,
     music_timer: Timer,
+    music_volume: f32,
+    sound_volume: f32
 }
 
 impl Game {
@@ -93,7 +96,7 @@ impl Game {
             a.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: -1 });
         }
         let p = Player{ position: rectangle_position, health: 5, points: 0, coins: 0, texture: player_texture };
-        Game{ player: p, space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true) }
+        Game{ player: p, space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
     }
 
     fn draw_pause(&mut self) {
@@ -120,6 +123,10 @@ impl Game {
                         self.previous_state = State::Main;
                         self.state = State::Credits;
                     }
+                    if ui.button("Options").clicked() {
+                        self.previous_state = State::Main;
+                        self.state = State::Options;
+                    }
                     if ui.button("Quit").clicked() {
                         std::process::exit(0);
                     }
@@ -132,11 +139,12 @@ impl Game {
             State::New => {
                 if self.music_timer.is_timer_done() || self.music_timer.first_time {
                     let song_choice = gen_range(0, 1);
-                    play_sound_once(self.game_music[song_choice as usize]);
+                    play_sound(self.game_music[song_choice as usize], PlaySoundParams { looped: false, volume: self.music_volume });
                     self.music_timer = Timer::new(13.0, false);
                 }
             },
             State::Credits => {},
+            State::Options => {},
             State::Main => {
                 if is_key_pressed(KeyCode::P) || is_key_pressed(KeyCode::Escape) {
                     self.paused = !self.paused;
@@ -161,7 +169,7 @@ impl Game {
                             junk.position.y = gen_range(0.0, 50.0);
                         }
                         else if junk.position.overlaps(&self.player.position) {
-                            play_sound_once(self.game_sounds[1]);
+                            play_sound(self.game_sounds[1], PlaySoundParams { looped: false, volume: self.sound_volume});
                             junk.position.x = gen_range(0.0, screen_width() - junk.position.w);
                             junk.position.y = gen_range(0.0, 50.0);
                             junk.rotate = gen_range(0.0, 360.0);
@@ -177,7 +185,7 @@ impl Game {
                             asteroid.position.y = gen_range(0.0, 50.0);
                         }
                         else if asteroid.position.overlaps(&self.player.position) {
-                            play_sound_once(self.game_sounds[0]);
+                            play_sound(self.game_sounds[0], PlaySoundParams { looped: false, volume: self.sound_volume });
                             asteroid.position.x = gen_range(0.0, screen_width() - asteroid.position.w);
                             asteroid.position.y = gen_range(0.0, 50.0);
                             asteroid.rotate = gen_range(0.0, 360.0);
@@ -218,6 +226,10 @@ impl Game {
                                 self.previous_state = State::New;
                                 self.state = State::Credits;
                             }
+                            if ui.button("Options").clicked() {
+                                self.previous_state = State::New;
+                                self.state = State::Options;
+                            }
                             if ui.button("Quit").clicked() {
                                 std::process::exit(0);
                             }
@@ -241,9 +253,12 @@ impl Game {
                         .show(egui_ctx, |ui| {
                             egui_ctx.set_pixels_per_point(3.0);
                             ui.label("Credits");
-                            ui.label("Game made by Anatoliy K.");
-                            ui.label("Music made by Anatoliy K.");
-                            ui.label("Textures made by Sadie");
+                            ui.hyperlink_to("Code, Music, and Sound FX made by Anatoliy K.", "https://linktr.ee/anatoliyk05");
+                            ui.hyperlink_to("Textures made by @happyghost_fren on Instagram", "https://www.instagram.com/happyghost_fren/");
+                            ui.hyperlink_to("Sound FX with JSFXR", "https://sfxr.me/");
+                            ui.hyperlink_to("Music made with Beepbox", "https://www.beepbox.co/");
+                            ui.hyperlink_to("Built using Macroquad", "https://macroquad.rs");
+                            ui.hyperlink_to("and egui", "https://egui.rs");
                             if ui.button("Back").clicked() {
                                 self.state = self.previous_state.clone();
                             }
@@ -314,6 +329,30 @@ impl Game {
                 if self.paused {
                     egui_macroquad::draw();
                 }
+            },
+            State::Options => {
+                let window_frame = egui::containers::Frame{
+                    fill: egui::Color32::TRANSPARENT,
+                    ..Default::default()
+                };
+                egui_macroquad::ui(|egui_ctx| {
+                    egui::Window::new("egui ❤ macroquad")
+                        .title_bar(false)
+                        .frame(window_frame)
+                        .default_pos(Pos2{ x: (screen_width() / 2.0 + 250.0) / 3.0, y: (screen_height() / 2.0 + 200.0) / 3.0 })
+                        .resizable(false)
+                        .show(egui_ctx, |ui| {
+                            egui_ctx.set_pixels_per_point(3.0);
+                            ui.label("Options");
+                            ui.add(egui::widgets::Slider::new(&mut self.music_volume, 0.0..=100.0).text("Music Volume"));
+                            ui.add(egui::widgets::Slider::new(&mut self.sound_volume, 0.0..=100.0).text("Sound Volume"));
+                            if ui.button("Back").clicked() {
+                                self.state = self.previous_state.clone();
+                            }
+                        });
+                });
+
+                egui_macroquad::draw();
             },
             State::Shop => {
                 clear_background(BLACK);
