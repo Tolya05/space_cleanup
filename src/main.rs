@@ -1,28 +1,14 @@
+mod game;
+mod player;
+mod space_objects;
+mod timer;
+
 use macroquad::{prelude::*, rand::*, math::Rect, audio::{load_sound, Sound, PlaySoundParams, play_sound}};
 use egui_macroquad::egui::{self, Pos2};
-
-struct Timer {
-    start_time: f64,
-    life_time:f64,
-    first_time: bool,
-}
-
-impl Timer {
-    fn new(time: f64, intial: bool) -> Timer {
-        Timer{ start_time: get_time(), life_time: time, first_time: intial }
-    }
-
-    fn is_timer_done(&self) -> bool {
-        let current_time = get_time();
-        let time_elapsed = current_time - self.start_time;
-        if time_elapsed == self.life_time {
-            true
-        }
-        else {
-            false
-        }
-    }
-}
+use player::Player;
+use space_objects::SpaceObject;
+use timer::Timer;
+use game::Game;
 
 #[derive(Clone, Copy)]
 enum State {
@@ -42,23 +28,7 @@ fn calculate_speed(points: i32) -> f32 {
     speed
 }
 
-struct Player {
-    position: Rect,
-    health: i32,
-    points: i32,
-    coins: i32,
-    texture: Texture2D,
-}
-
-struct SpaceObject {
-    position: Rect,
-    points: i32,
-    texture: Texture2D,
-    rotate: f32,
-    health: i32
-}
-
-struct Game {
+struct GameStruct {
     player: Player,
     space_junk: Vec<SpaceObject>,
     asteroids: Vec<SpaceObject>,
@@ -73,32 +43,7 @@ struct Game {
     sound_volume: f32
 }
 
-impl Game {
-    fn new(rectangle_position: Rect, player_texture: Texture2D, space_junk_textures: Vec<Texture2D>, game_music: Vec<Sound>, game_sounds: Vec<Sound>) -> Game {
-        let mut j = Vec::new();
-        let number_of_circles = gen_range(20, 30);
-        for _ in 0..number_of_circles {
-            let texture_chose = gen_range(0, 100);
-            let junk_texture_number: i32;
-            if texture_chose > 50 {
-                junk_texture_number = 0;
-            }
-            else {
-                junk_texture_number = 1;
-            }
-            let junk_texture: Texture2D = space_junk_textures[junk_texture_number as usize];
-            j.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: 0 });
-        }
-        let mut a = Vec::new();
-        let number_of_asteriods = gen_range(5, 10);
-        for _ in 0..number_of_asteriods {
-            let junk_texture: Texture2D = space_junk_textures[2];
-            a.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: -1 });
-        }
-        let p = Player{ position: rectangle_position, health: 5, points: 0, coins: 0, texture: player_texture };
-        Game{ player: p, space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
-    }
-
+impl GameStruct {
     fn draw_pause(&mut self) {
         let window_frame = egui::containers::Frame{
             fill: egui::Color32::TRANSPARENT,
@@ -132,6 +77,43 @@ impl Game {
                     }
                 });
         });
+    }
+
+}
+
+impl Game for GameStruct {
+    fn new(
+        player_texture: Texture2D, 
+        space_junk_textures: Vec<Texture2D>,
+        game_music: Vec<Sound>,
+        game_sounds: Vec<Sound>
+    ) -> Self 
+    {
+        let mut j = Vec::new();
+        let number_of_circles = gen_range(20, 30);
+        for _ in 0..number_of_circles {
+            let texture_chose = gen_range(0, 200);
+            let junk_texture_number: i32;
+            if texture_chose > 50 {
+                junk_texture_number = 0;
+            }
+            else if texture_chose < 50 && texture_chose > 100 {
+                junk_texture_number = 1;
+            }
+            else {
+                junk_texture_number = 2;
+            }
+            let junk_texture: Texture2D = space_junk_textures[junk_texture_number as usize];
+            j.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: 0 });
+        }
+        let mut a = Vec::new();
+        let number_of_asteriods = gen_range(5, 10);
+        for _ in 0..number_of_asteriods {
+            let junk_texture: Texture2D = space_junk_textures[3];
+            a.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: -1 });
+        }
+        let p = Player{ position: Rect { x: screen_width() / 2.0, y: screen_height() / 10.0 * 7.5, w: 75.0, h: 125.0 }, health: 5, points: 0, coins: 0, texture: player_texture };
+        Self{ player: p, space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
     }
 
     fn update(&mut self) {
@@ -424,10 +406,6 @@ impl Game {
 
     }
 
-    fn run(&mut self) {
-        self.update();
-        self.draw();
-    }
 }
 
 fn window_conf() -> Conf {
@@ -446,21 +424,18 @@ async fn main() {
 
     junk_texture.push(load_texture("res/junk1.png").await.unwrap());
     junk_texture.push(load_texture("res/junk2.png").await.unwrap());
+    junk_texture.push(load_texture("res/junk3.png").await.unwrap());
     junk_texture.push(load_texture("res/asteroid.png").await.unwrap());
 
     let mut game_music = Vec::new();
-    
     game_music.push(load_sound("res/music/space_cleanup_song1.wav").await.unwrap());
-
     game_music.push(load_sound("res/music/space_cleanup_song2.wav").await.unwrap());
 
     let mut game_sounds = Vec::new();
-    
     game_sounds.push(load_sound("res/sounds/hit.wav").await.unwrap());
-
     game_sounds.push(load_sound("res/sounds/pickup.wav").await.unwrap());
 
-    let mut main_game = Game::new(Rect { x: screen_width() / 2.0, y: screen_height() / 10.0 * 7.5, w: 75.0, h: 125.0 }, player_texture, junk_texture, game_music, game_sounds);
+    let mut main_game = GameStruct::new(player_texture, junk_texture, game_music, game_sounds);
 
     loop { 
 
