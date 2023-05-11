@@ -1,14 +1,16 @@
 mod game;
+mod object;
 mod player;
 mod space_objects;
 mod timer;
 
-use macroquad::{prelude::*, rand::*, math::Rect, audio::{load_sound, Sound, PlaySoundParams, play_sound}};
+use macroquad::{prelude::*, rand::*, audio::{load_sound, Sound, PlaySoundParams, play_sound}};
 use egui_macroquad::egui::{self, Pos2};
 use player::Player;
 use space_objects::SpaceObject;
 use timer::Timer;
 use game::Game;
+use object::Object;
 
 #[derive(Clone, Copy)]
 enum State {
@@ -104,16 +106,15 @@ impl Game for GameStruct {
                 junk_texture_number = 2;
             }
             let junk_texture: Texture2D = space_junk_textures[junk_texture_number as usize];
-            j.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: 0 });
+            j.push(SpaceObject::new(junk_texture));
         }
         let mut a = Vec::new();
         let number_of_asteriods = gen_range(5, 10);
         for _ in 0..number_of_asteriods {
             let junk_texture: Texture2D = space_junk_textures[3];
-            a.push(SpaceObject{ position: Rect { x: gen_range(0.0, screen_width() - 64.0), y: gen_range(0.0, 50.0), w: 64.0, h: 64.0 }, points: gen_range(1, 5), texture: junk_texture, rotate: gen_range(0.0, 360.0), health: -1 });
+            a.push(SpaceObject::new(junk_texture));
         }
-        let p = Player{ position: Rect { x: screen_width() / 2.0, y: screen_height() / 10.0 * 7.5, w: 75.0, h: 125.0 }, health: 5, points: 0, coins: 0, texture: player_texture };
-        Self{ player: p, space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
+        Self{ player: Player::new(player_texture), space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
     }
 
     fn update(&mut self) {
@@ -139,18 +140,18 @@ impl Game for GameStruct {
                         self.state = State::GameOver;
                     }
                     let speed = calculate_speed(self.player.points);
-                    if is_key_down(KeyCode::A) && self.player.position.x > 0.0 {
-                        self.player.position.x -= speed * get_frame_time();
+                    if is_key_down(KeyCode::A) && self.player.get_x() > 0.0 {
+                        self.player.move_x(-(speed * get_frame_time()));
                     }
-                    if is_key_down(KeyCode::D) && self.player.position.x < screen_width() - self.player.position.w {
-                        self.player.position.x += speed * get_frame_time();
+                    if is_key_down(KeyCode::D) && self.player.get_x() < screen_width() - self.player.get_width() {
+                        self.player.move_x(speed * get_frame_time());
                     }
                     for junk in self.space_junk.iter_mut() {
                         if junk.position.y > screen_height() {
                             junk.position.x = gen_range(0.0, screen_width());
                             junk.position.y = gen_range(0.0, 50.0);
                         }
-                        else if junk.position.overlaps(&self.player.position) {
+                        else if junk.position.overlaps(&self.player.get_rect()) {
                             play_sound(self.game_sounds[1], PlaySoundParams { looped: false, volume: self.sound_volume});
                             junk.position.x = gen_range(0.0, screen_width() - junk.position.w);
                             junk.position.y = gen_range(0.0, 50.0);
@@ -166,7 +167,7 @@ impl Game for GameStruct {
                             asteroid.position.x = gen_range(0.0, screen_width());
                             asteroid.position.y = gen_range(0.0, 50.0);
                         }
-                        else if asteroid.position.overlaps(&self.player.position) {
+                        else if asteroid.position.overlaps(&self.player.get_rect()) {
                             play_sound(self.game_sounds[0], PlaySoundParams { looped: false, volume: self.sound_volume });
                             asteroid.position.x = gen_range(0.0, screen_width() - asteroid.position.w);
                             asteroid.position.y = gen_range(0.0, 50.0);
@@ -290,16 +291,16 @@ impl Game for GameStruct {
 
                 //draw_rectangle(self.player.position.x, self.player.position.y, self.player.position.w, self.player.position.h, GREEN);
                 let player_parmas = DrawTextureParams{
-                    dest_size: Some(Vec2{ x: self.player.position.w, y: self.player.position.h}),
+                    dest_size: Some(Vec2{ x: self.player.get_width(), y: self.player.get_height()}),
                     source: None,
                     rotation: 0.0,
                     flip_x: false,
                     flip_y: false,
                     pivot: None,
                 };
-                draw_texture_ex(self.player.texture, self.player.position.x, self.player.position.y, WHITE, player_parmas);
+                draw_texture_ex(self.player.texture, self.player.get_x(), self.player.get_y(), WHITE, player_parmas);
                 if self.hitbox {
-                    draw_rectangle_lines(self.player.position.x, self.player.position.y, self.player.position.w, self.player.position.h, 5.0, BLUE);
+                    draw_rectangle_lines(self.player.get_x(), self.player.get_y(), self.player.get_width(), self.player.get_height(), 5.0, BLUE);
                 }
 
                 draw_text(&format!("Points: {}", self.player.points).to_owned(), 50.0, 50.0, 25.0, WHITE);
@@ -358,14 +359,14 @@ impl Game for GameStruct {
                                 self.player.points -= new_coins;
                             }
                             let player_parmas = DrawTextureParams{
-                                dest_size: Some(Vec2{ x: self.player.position.w, y: self.player.position.h}),
+                                dest_size: Some(Vec2{ x: self.player.get_width(), y: self.player.get_height()}),
                                 source: None,
                                 rotation: 0.0,
                                 flip_x: false,
                                 flip_y: false,
                                 pivot: None,
                             };
-                            draw_texture_ex(self.player.texture, self.player.position.x, self.player.position.y, WHITE, player_parmas);
+                            draw_texture_ex(self.player.texture, self.player.get_x(), self.player.get_y(), WHITE, player_parmas);
                             if ui.button("Back").clicked() {
                                 self.state = State::Main;
                             }
