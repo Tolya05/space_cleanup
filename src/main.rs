@@ -4,12 +4,12 @@ mod player;
 mod space_objects;
 mod timer;
 
-use macroquad::{prelude::*, rand::*, audio::{load_sound, Sound, PlaySoundParams, play_sound}};
+use macroquad::{prelude::*, rand::*, audio::{load_sound, Sound, PlaySoundParams, play_sound, stop_sound}};
 use egui_macroquad::egui::{self, Pos2};
 use player::Player;
 use space_objects::SpaceObject;
 use timer::Timer;
-use game::Game;
+use game::{Game, exit_game};
 use object::Object;
 
 #[derive(Clone, Copy)]
@@ -114,14 +114,24 @@ impl Game for GameStruct {
             let junk_texture: Texture2D = space_junk_textures[3];
             a.push(SpaceObject::new(junk_texture));
         }
-        Self{ player: Player::new(player_texture), space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
+        let mut p = Player::new(player_texture);
+        match std::fs::read("data/player.json") {
+            Ok(_) => {
+                Self{ player: p.load_player(player_texture, "data/player.json".to_string()), space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
+            },
+            Err(_) => {
+                Self{ player: Player::new(player_texture), space_junk: j, asteroids: a, hitbox: false, paused: false, state: State::New, previous_state: State::New, game_music: game_music, game_sounds: game_sounds, music_timer: Timer::new(13.0, true), music_volume: 25.0, sound_volume: 25.0 }
+            },
+        }
     }
 
     fn update(&mut self) {
         match self.state {
             State::New => {
-                if self.music_timer.is_timer_done() || self.music_timer.first_time {
+                if self.music_timer.is_timer_done() {
                     let song_choice = gen_range(0, 1);
+                    stop_sound(self.game_music[0]);
+                    stop_sound(self.game_music[1]);
                     play_sound(self.game_music[song_choice as usize], PlaySoundParams { looped: false, volume: self.music_volume });
                     self.music_timer = Timer::new(13.0, false);
                 }
@@ -129,6 +139,9 @@ impl Game for GameStruct {
             State::Credits => {},
             State::Options => {},
             State::Main => {
+                if is_key_pressed(KeyCode::B) {
+                    self.player.save_player();
+                }
                 if is_key_pressed(KeyCode::P) || is_key_pressed(KeyCode::Escape) {
                     self.paused = !self.paused;
                 }
@@ -214,7 +227,7 @@ impl Game for GameStruct {
                                 self.state = State::Options;
                             }
                             if ui.button("Quit").clicked() {
-                                std::process::exit(0);
+                                exit_game();
                             }
                         });
                 });
@@ -396,7 +409,7 @@ impl Game for GameStruct {
                                 self.state = State::Main;
                             }
                             if ui.button("Quit").clicked() {
-                                std::process::exit(0);
+                                exit_game();
                             }
                         });
                 });
@@ -419,7 +432,19 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let player_texture = load_texture("res/player.png").await.unwrap();
+    let player_image: Texture2D;
+
+    let player_texture = load_texture("res/player.png").await;
+
+    match player_texture {
+        Ok(image) => {
+            player_image = image.clone();
+        },
+        Err(error) => {
+            println!("{}", error);
+            exit_game()
+        }
+    }
 
     let mut junk_texture = Vec::new();
 
@@ -436,7 +461,7 @@ async fn main() {
     game_sounds.push(load_sound("res/sounds/hit.wav").await.unwrap());
     game_sounds.push(load_sound("res/sounds/pickup.wav").await.unwrap());
 
-    let mut main_game = GameStruct::new(player_texture, junk_texture, game_music, game_sounds);
+    let mut main_game = GameStruct::new(player_image, junk_texture, game_music, game_sounds);
 
     loop { 
 

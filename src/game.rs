@@ -15,3 +15,7 @@ pub trait Game {
         self.draw();
     }
 }
+
+pub fn exit_game() -> ! {
+    std::process::exit(0);
+}
