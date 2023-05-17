@@ -1,8 +1,8 @@
 use macroquad::prelude::{Rect, Texture2D, screen_height, screen_width};
-use crate::object::Object;
+use crate::{object::Object, game};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::{fs::{File}, io::{Write, Read}};
+use std::{fs::{File, create_dir}, io::{Write, Read}};
 
 pub struct Player {
     position: Rect,
@@ -35,6 +35,14 @@ impl Player {
         self.coins.clone()
     }
 
+    pub fn hurt(&mut self, damage: i32) {
+        self.health += damage;
+    }
+
+    pub fn collect_point(&mut self, points: i32) {
+        self.points += points;
+    }
+
     pub fn save_player(&self) {
         let x_pos = self.get_x();
         let y_pos = self.get_y();
@@ -47,18 +55,27 @@ impl Player {
             },
             Err(error) => {
                 println!("An Error has occured: {}", error);
-                std::process::exit(0);
+                game::exit_game();
             },
+        }
+        match create_dir("data") {
+            Ok(_) => {
+                println!("Data directory created");
+            },
+            Err(error) => {
+                println!("{}", error);
+            }
         }
         let json_file_init = File::create("data/player.json");
         let mut json_file: File;
         match json_file_init {
             Ok(file) => {
                 json_file = file;
+                println!("Saved data");
             },
             Err(error) => {
                 println!("Cannot Create File {}", error);
-                std::process::exit(0);
+                game::exit_game();
             }
         }
         match json_file.write_all(player_data.as_bytes()) {

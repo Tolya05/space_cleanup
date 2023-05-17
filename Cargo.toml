@@ -2,6 +2,7 @@
 name = "space_cleanup"
 version = "0.1.0"
 edition = "2021"
+description = "A game to avoid asteroids while collecting scraps"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,3 +12,10 @@ egui-macroquad = "0.15.0"
 rand = "*"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[package.metadata.bundle]
+name = "Space Cleanup"
+identifier = "com.anatoliyk.space_cleanup"
+resources = ["res/player.png", "res/asteroid.png", "res/junk1.png", "res/music/*.wav", "res/sounds/*.wav"]
+category = "game"
+short_description = "A game to avoid asteroids while collecting scraps"
