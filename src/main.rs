@@ -48,7 +48,7 @@ struct GameStruct {
 }
 
 impl GameStruct {
-    fn draw_pause(&mut self) {
+    /*fn draw_pause(&mut self) {
         let window_frame = egui::containers::Frame{
             fill: egui::Color32::TRANSPARENT,
             ..Default::default()
@@ -81,6 +81,33 @@ impl GameStruct {
                     }
                 });
         });
+    }*/
+
+    fn draw_pause(&mut self) {
+        clear_background(BLACK);
+        let btn_x = screen_width() / 2.0;
+        let btn_y = screen_height() / 10.0;
+        let btn_width = 125.0;
+        let btn_height = 50.0;
+        let label_x = btn_x - (measure_text("Paused", None, 25, 2.0).width / 2.0);
+        draw_text("Paused", btn_x, btn_y * 3.5, 25.0, WHITE);
+        let continue_btn_rect = Rect {
+            x: label_x,
+            y: btn_y * 4.0,
+            w: btn_width,
+            h: btn_height
+        };
+        let mut continue_btn = Button::new(
+            continue_btn_rect,
+            String::from("Continue"),
+            25.0,
+            LIGHTGRAY,
+            BLACK
+        );
+        continue_btn.draw();
+        if continue_btn.clicked() {
+            self.paused = false;
+        }
     }
 
     fn draw_main_menu(&mut self) {
@@ -374,9 +401,9 @@ impl Game for GameStruct {
                 if self.debug {
                     draw_text(&format!("FPS: {}", get_fps()).to_owned(), screen_width() / 2.0, 50.0, 25.0, WHITE);
                 }
-                if self.paused {
+                /*if self.paused {
                     egui_macroquad::draw();
-                }
+                }*/
             },
             State::Options => {
                 let window_frame = egui::containers::Frame{
