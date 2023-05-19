@@ -9,13 +9,15 @@ description = "A game to avoid asteroids while collecting scraps"
 [dependencies]
 macroquad = "0.3.25"
 egui-macroquad = "0.15.0"
+macroui = { git = "https://github.com/Tolya05/macroui.git" }
 rand = "*"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [package.metadata.bundle]
-name = "Space Cleanup"
+name = "SpaceCleanup"
 identifier = "com.anatoliyk.space_cleanup"
+icon = ["64x64.png", "128x128.png"]
 resources = ["res/player.png", "res/asteroid.png", "res/junk1.png", "res/music/*.wav", "res/sounds/*.wav"]
 category = "game"
 short_description = "A game to avoid asteroids while collecting scraps"

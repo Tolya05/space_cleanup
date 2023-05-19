@@ -11,6 +11,7 @@ use space_objects::SpaceObject;
 use timer::Timer;
 use game::{Game, exit_game, init_texture, init_sound};
 use object::Object;
+use macroui::button::Button;
 
 #[derive(Clone, Copy)]
 enum State {
@@ -82,6 +83,41 @@ impl GameStruct {
         });
     }
 
+    fn draw_main_menu(&mut self) {
+        let window_frame = egui::containers::Frame{
+            fill: egui::Color32::TRANSPARENT,
+            ..Default::default()
+        };
+        clear_background(BLACK);
+        egui_macroquad::ui(|egui_ctx| {
+            egui::Window::new("egui ❤ macroquad")
+                .title_bar(false)
+                .frame(window_frame)
+                .default_pos(Pos2{ x: (screen_width() / 2.0 + 250.0) / 3.0, y: (screen_height() / 2.0 + 200.0) / 3.0 })
+                .resizable(false)
+                .show(egui_ctx, |ui| {
+                    egui_ctx.set_pixels_per_point(3.0);
+                    ui.label("Space Cleanup");
+                    if ui.button("Play").clicked() {
+                        self.state = State::GameTutorial;
+                    }
+                    if ui.button("Credits").clicked() {
+                        self.previous_state = State::MainMenu;
+                        self.state = State::Credits;
+                    }
+                    if ui.button("Options").clicked() {
+                        self.previous_state = State::MainMenu;
+                        self.state = State::Options;
+                    }
+                    if ui.button("Quit").clicked() {
+                        exit_game();
+                    }
+                });
+        });
+
+        egui_macroquad::draw()
+    }
+
 }
 
 impl Game for GameStruct {
@@ -127,9 +163,6 @@ impl Game for GameStruct {
     }
 
     fn update(&mut self) {
-        if is_key_down(KeyCode::LeftShift) && is_key_down(KeyCode::Q) {
-            exit_game();
-        }
         match self.state {
             State::MainMenu => {
                 if self.music_timer.is_timer_done() {
@@ -163,6 +196,14 @@ impl Game for GameStruct {
                     }
                     if is_key_down(KeyCode::D) && self.player.get_x() < screen_width() - self.player.get_width() {
                         self.player.move_x(speed * get_frame_time());
+                    }
+                    for touch in touches().iter_mut() {
+                        if touch.position.x > self.player.get_x() {
+                            self.player.move_x(speed * get_frame_time());
+                        }
+                        else if touch.position.x < self.player.get_x() {
+                            self.player.move_x(-(speed * get_frame_time()));
+                        }
                     }
                     for junk in self.scraps.iter_mut() {
                         if junk.position.y > screen_height() {
@@ -198,38 +239,7 @@ impl Game for GameStruct {
     fn draw(&mut self) {
         match self.state {
             State::MainMenu => {
-                let window_frame = egui::containers::Frame{
-                    fill: egui::Color32::TRANSPARENT,
-                    ..Default::default()
-                };
-                clear_background(BLACK);
-                egui_macroquad::ui(|egui_ctx| {
-                    egui::Window::new("egui ❤ macroquad")
-                        .title_bar(false)
-                        .frame(window_frame)
-                        .default_pos(Pos2{ x: (screen_width() / 2.0 + 250.0) / 3.0, y: (screen_height() / 2.0 + 200.0) / 3.0 })
-                        .resizable(false)
-                        .show(egui_ctx, |ui| {
-                            egui_ctx.set_pixels_per_point(3.0);
-                            ui.label("Space Cleanup");
-                            if ui.button("Play").clicked() {
-                                self.state = State::GameTutorial;
-                            }
-                            if ui.button("Credits").clicked() {
-                                self.previous_state = State::MainMenu;
-                                self.state = State::Credits;
-                            }
-                            if ui.button("Options").clicked() {
-                                self.previous_state = State::MainMenu;
-                                self.state = State::Options;
-                            }
-                            if ui.button("Quit").clicked() {
-                                exit_game();
-                            }
-                        });
-                });
-
-                egui_macroquad::draw()
+                self.draw_main_menu();
             },
             State::Credits => {
                 clear_background(BLACK);
@@ -286,19 +296,23 @@ impl Game for GameStruct {
                     draw_texture_ex(scrap.texture, screen_width() / 10.0 * 4.5 + (scrap.position.w / 2.0), screen_height() / 2.0, WHITE, scrap_parmas);
                     draw_text("Catch the Scraps", screen_width() / 10.0 * 4.5 + (scrap.position.w / 2.0), screen_height() / 2.0 + scrap.position.h + 25.0, 25.0, WHITE);
                 }
-                let play_rect = Rect { x: screen_width() / 2.0 - (175.0 / 2.0), y: screen_height() / 10.0 * 7.5, w: 175.0, h: 50.0};
-                let mut play_color = WHITE;
-                let mouse_pos = mouse_position();
-                let mouse_rect = Rect { x: mouse_pos.0, y: mouse_pos.1, w: 10.0, h: 10.0 };
-                let text_size = measure_text("Play Game", None, 2 as u16, 2.0);
-                if mouse_rect.overlaps(&play_rect) && is_mouse_button_down(MouseButton::Left) {
+                let play_rect = Rect { 
+                    x: screen_width() / 2.0 - (175.0 / 2.0),
+                    y: screen_height() / 10.0 * 7.5,
+                    w: 175.0,
+                    h: 50.0
+                };
+                let mut play_button = Button::new(
+                    play_rect,
+                    String::from("Play Game"),
+                    25.0,
+                    LIGHTGRAY,
+                    BLACK
+                );
+                play_button.draw();
+                if play_button.clicked() {
                     self.state = State::Game;
                 }
-                if mouse_rect.overlaps(&play_rect) {
-                    play_color = LIGHTGRAY;
-                }
-                draw_rectangle(play_rect.x, play_rect.y, play_rect.w, play_rect.h, play_color);
-                draw_text("Play Game", play_rect.x + (play_rect.w / 2.0) - text_size.width, play_rect.y + (play_rect.h / 2.0) + text_size.height, 20.0, BLACK);
             },
             State::Game => {
                 clear_background(BLACK);
@@ -476,6 +490,7 @@ fn window_conf() -> Conf {
     }
 }
 
+#[cfg(not(debug_assertions))] 
 #[macroquad::main(window_conf)]
 async fn main() {
     let player_path: &str;
@@ -503,6 +518,42 @@ async fn main() {
         sound1_path = "res/sounds/hit.wav";
         sound2_path = "res/sounds/pickup.wav";
     }
+
+    let player_image = init_texture(player_path).await;
+
+    let mut junk_texture_list = Vec::new();
+    junk_texture_list.push(init_texture(scraps_path).await);
+    junk_texture_list.push(init_texture(asteroid_path).await);
+
+    let mut game_music = Vec::new();
+    game_music.push(init_sound(song1_path).await);
+    game_music.push(init_sound(song2_path).await);
+
+    let mut game_sounds = Vec::new();
+    game_sounds.push(init_sound(sound1_path).await);
+    game_sounds.push(init_sound(sound2_path).await);
+
+    let mut main_game = GameStruct::new(player_image, junk_texture_list, game_music, game_sounds);
+
+    loop { 
+
+        main_game.run();
+
+        next_frame().await
+
+    }
+}
+
+#[cfg(debug_assertions)]
+#[macroquad::main(window_conf)]
+async fn main() {
+    let player_path = "res/player.png";
+    let scraps_path = "res/junk1.png";
+    let asteroid_path = "res/asteroid.png";
+    let song1_path = "res/music/song1.wav";
+    let song2_path = "res/music/song2.wav";
+    let sound1_path = "res/sounds/hit.wav";
+    let sound2_path = "res/sounds/pickup.wav";
 
     let player_image = init_texture(player_path).await;
 
